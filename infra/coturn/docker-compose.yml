@@ -1,0 +1,11 @@
+services:
+  coturn:
+    image: coturn/coturn:latest
+    container_name: huddilo-coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/turnserver.conf:ro,Z
+    command:
+      - --realm=${TURN_REALM}
+      - --static-auth-secret=${TURN_SHARED_SECRET}
