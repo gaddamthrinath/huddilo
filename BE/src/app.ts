@@ -8,13 +8,15 @@ import { requestId } from "./common/middleware/request-id";
 import { env } from "./config/env";
 import { setupApiDocs } from "./docs/swagger";
 import type { MediaWorkerPoolStatusProvider } from "./modules/media/media-worker-pool";
+import type { GuestSessionService } from "./modules/meetings/guest-session.service";
 import { createApiRouter } from "./routes";
 
 type AppDependencies = {
   mediaWorkerPool?: MediaWorkerPoolStatusProvider;
+  guestSessions?: GuestSessionService;
 };
 
-export function createApp({ mediaWorkerPool }: AppDependencies = {}): express.Express {
+export function createApp({ mediaWorkerPool, guestSessions }: AppDependencies = {}): express.Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -30,7 +32,7 @@ export function createApp({ mediaWorkerPool }: AppDependencies = {}): express.Ex
   app.use(requestId);
 
   setupApiDocs(app);
-  app.use("/api/v1", createApiRouter({ mediaWorkerPool }));
+  app.use("/api/v1", createApiRouter({ mediaWorkerPool, guestSessions }));
 
   app.use(notFound);
   app.use(errorHandler);

@@ -37,7 +37,11 @@ export class MediaProducerService {
     kind: MediaKind,
     rtpParameters: RtpParameters,
   ): Promise<ProducedTrack> {
-    const transport = this.transports.getConnectedTransport(meetingCode, participantId, "send");
+    // mediasoup creates the Producer before the browser finishes its first
+    // WebRTC negotiation. That negotiation triggers the DTLS connect callback
+    // immediately afterward, so requiring a connected state here rejects the
+    // normal mediasoup-client produce sequence.
+    const transport = this.transports.getTransport(meetingCode, participantId, "send");
     const producer = await transport.produce({ kind, rtpParameters, appData: { meetingCode, participantId } });
     const trackedProducer = { id: producer.id, meetingCode, participantId, kind };
     this.producers.set(producer.id, trackedProducer);
@@ -74,7 +78,10 @@ export class MediaProducerService {
       throw new AppError("This browser cannot receive the requested media", 400, "CANNOT_CONSUME");
     }
 
-    const transport = this.transports.getConnectedTransport(meetingCode, participantId, "receive");
+    // A Consumer is created before the browser calls receiveTransport.consume(),
+    // which is the action that starts its DTLS handshake. Producers differ: a
+    // browser must already have connected its send transport before publishing.
+    const transport = this.transports.getTransport(meetingCode, participantId, "receive");
     const consumer = await transport.consume({ producerId, rtpCapabilities, paused: true });
     this.consumers.set(consumer.id, { meetingCode, participantId, consumer });
     consumer.observer.once("close", () => this.consumers.delete(consumer.id));

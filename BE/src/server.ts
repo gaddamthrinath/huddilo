@@ -12,6 +12,7 @@ import { MediaTransportService } from "./modules/media/media-transport.service";
 import { MediaWorkerPool } from "./modules/media/media-worker-pool";
 import { TurnCredentialService } from "./modules/media/turn-credential.service";
 import { MeetingRepository } from "./modules/meetings/meeting.repository";
+import { GuestSessionService } from "./modules/meetings/guest-session.service";
 import { MeetingService } from "./modules/meetings/meeting.service";
 import { RealtimeGateway } from "./modules/realtime/realtime-gateway";
 import { MeetingRoomService } from "./modules/rooms/meeting-room.service";
@@ -25,7 +26,8 @@ async function startServer(): Promise<void> {
   const mediaTransports = new MediaTransportService(mediaRouters, mediaConfig.webRtcTransport);
   const mediaProducers = new MediaProducerService(mediaRouters, mediaTransports);
 
-  const httpServer = createServer(createApp({ mediaWorkerPool }));
+  const guestSessions = new GuestSessionService();
+  const httpServer = createServer(createApp({ mediaWorkerPool, guestSessions }));
   const rooms = new MeetingRoomService();
   const meetings = new MeetingService(new MeetingRepository());
   const mediaAccess = new MediaAccessService(
@@ -41,6 +43,7 @@ async function startServer(): Promise<void> {
     mediaAccess,
     mediaTransports,
     mediaProducers,
+    guestSessions,
   );
 
   httpServer.listen(env.PORT, () => {

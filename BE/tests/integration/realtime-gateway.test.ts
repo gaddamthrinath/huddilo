@@ -5,6 +5,7 @@ import { io as createClient, type Socket } from "socket.io-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MediaAccessService } from "../../src/modules/media/media-access.service";
+import { getGuestCookieName, GuestSessionService } from "../../src/modules/meetings/guest-session.service";
 import type { MediaProducerService } from "../../src/modules/media/media-producer.service";
 import type { MediaTransportService } from "../../src/modules/media/media-transport.service";
 import { TurnCredentialService } from "../../src/modules/media/turn-credential.service";
@@ -79,7 +80,7 @@ describe("RealtimeGateway", () => {
     );
     const mediaTransports: Pick<
       MediaTransportService,
-      "getOrCreateTransport" | "connectTransport" | "closeParticipantTransports"
+      "getOrCreateTransport" | "connectTransport" | "closeParticipantTransports" | "getTransport"
     > = {
       getOrCreateTransport: vi.fn().mockResolvedValue({
         id: "transport-id",
@@ -89,16 +90,22 @@ describe("RealtimeGateway", () => {
       }),
       connectTransport: vi.fn().mockResolvedValue(undefined),
       closeParticipantTransports: vi.fn(),
+      getTransport: vi.fn().mockReturnValue({
+        id: "transport-id",
+        restartIce: vi.fn().mockResolvedValue({ usernameFragment: "fresh", password: "test-password" }),
+      }),
     };
     const mediaProducers: Pick<
       MediaProducerService,
       | "getRouterRtpCapabilities"
+      | "listAvailableProducers"
       | "produce"
       | "createConsumer"
       | "resumeConsumer"
       | "closeParticipantMedia"
     > = {
       getRouterRtpCapabilities: vi.fn().mockResolvedValue({ codecs: [] }),
+      listAvailableProducers: vi.fn().mockReturnValue([]),
       produce: vi.fn().mockResolvedValue({ id: "producer-id", participantId: "guest", kind: "audio" }),
       createConsumer: vi.fn().mockResolvedValue({
         id: "consumer-id",
@@ -109,6 +116,10 @@ describe("RealtimeGateway", () => {
       resumeConsumer: vi.fn().mockResolvedValue(undefined),
       closeParticipantMedia: vi.fn().mockReturnValue([]),
     };
+    const guestSessions = new GuestSessionService();
+    const meetingCode = "abc-defg-hij";
+    const guestSessionId = guestSessions.ensure(meetingCode);
+    const guestCookie = `${getGuestCookieName(meetingCode)}=${guestSessionId}`;
     const gateway = new RealtimeGateway(
       httpServer,
       "http://localhost:3000",
@@ -117,13 +128,14 @@ describe("RealtimeGateway", () => {
       mediaAccess,
       mediaTransports as MediaTransportService,
       mediaProducers as MediaProducerService,
+      guestSessions,
     );
     await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
     const { port } = httpServer.address() as AddressInfo;
     const url = `http://127.0.0.1:${port}`;
 
     const host = await connect(url, "huddilo_host_abc_defg_hij=host-token");
-    const guest = await connect(url);
+    const guest = await connect(url, guestCookie);
     sockets.push(host, guest);
 
     const hostJoin = await emitWithAck<JoinResponse>(host, "room:join", {
@@ -147,6 +159,11 @@ describe("RealtimeGateway", () => {
       success: false,
       error: { code: "PARTICIPANT_NOT_ADMITTED" },
     });
+    expect(await emitWithAck(guest, "media:restart-ice", "receive")).toMatchObject({
+      success: false,
+      error: { code: "PARTICIPANT_NOT_ADMITTED" },
+    });
+    expect(mediaTransports.getTransport).not.toHaveBeenCalled();
 
     const admitted = new Promise<{ meetingCode: string }>((resolve) => {
       guest.once("room:admitted", resolve);
@@ -166,6 +183,11 @@ describe("RealtimeGateway", () => {
 
     const transport = await emitWithAck<CreateTransportResponse>(guest, "media:create-transport", "send");
     expect(transport).toMatchObject({ success: true, transport: { id: "transport-id" } });
+    expect(await emitWithAck(guest, "media:restart-ice", "send")).toMatchObject({
+      success: true,
+      iceParameters: { usernameFragment: "fresh" },
+    });
+    expect(mediaTransports.getTransport).toHaveBeenCalledWith(meetingCode, guest.id, "send");
 
     const invalidTransport = await emitWithAck<CreateTransportResponse>(guest, "media:create-transport", "invalid");
     expect(invalidTransport).toMatchObject({
@@ -228,6 +250,28 @@ describe("RealtimeGateway", () => {
       "consumer-id",
     );
     expect(resumed).toEqual({ success: true });
+
+    const guestId = guest.id;
+    const departure = new Promise<string>((resolve) => {
+      host.once("room:participant-left", resolve);
+    });
+    guest.disconnect();
+    await expect(departure).resolves.toBe(guestId);
+    const roster = await emitWithAck<{ success: boolean; participants: { id: string }[] }>(
+      host, "room:list-participants",
+    );
+    expect(roster.success).toBe(true);
+    expect(roster.participants.map((participant) => participant.id)).toEqual([host.id]);
+
+    const returningGuest = await connect(url, guestCookie);
+    const otherBrowser = await connect(url);
+    sockets.push(returningGuest, otherBrowser);
+    expect(await emitWithAck<JoinResponse>(returningGuest, "room:join", {
+      meetingCode, displayName: "Jordan",
+    })).toMatchObject({ success: true, participant: { access: "admitted", role: "guest" } });
+    expect(await emitWithAck<JoinResponse>(otherBrowser, "room:join", {
+      meetingCode, displayName: "Jordan",
+    })).toMatchObject({ success: true, participant: { access: "waiting", role: "guest" } });
 
     await gateway.close();
   });

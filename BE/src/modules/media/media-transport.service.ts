@@ -2,6 +2,7 @@ import type { DtlsParameters, IceCandidate, IceParameters, WebRtcTransport } fro
 
 import { AppError } from "../../common/errors/app-error";
 import type { WebRtcTransportConfig } from "../../config/media";
+import { observeMediaTransport } from "./media-diagnostics";
 import type { MediaRouterService } from "./media-router.service";
 
 export type TransportDirection = "send" | "receive";
@@ -51,6 +52,7 @@ export class MediaTransportService {
     const participantTransport = { meetingCode, participantId, direction, transport };
     this.transportsByParticipant.set(transportKey, participantTransport);
     transport.observer.once("close", () => this.transportsByParticipant.delete(transportKey));
+    observeMediaTransport(transport, participantId, direction);
 
     return this.toParameters(transport);
   }
@@ -105,6 +107,22 @@ export class MediaTransportService {
     }
     if (participantTransport.transport.dtlsState !== "connected") {
       throw new AppError("Connect the media transport before using it", 409, "TRANSPORT_NOT_CONNECTED");
+    }
+
+    return participantTransport.transport;
+  }
+
+  /** Returns an existing transport when mediasoup may safely configure it before DTLS completes. */
+  public getTransport(
+    meetingCode: string,
+    participantId: string,
+    direction: TransportDirection,
+  ): WebRtcTransport {
+    const participantTransport = this.transportsByParticipant.get(
+      this.transportKey(meetingCode, participantId, direction),
+    );
+    if (!participantTransport) {
+      throw new AppError("Create the media transport before using it", 404, "TRANSPORT_NOT_FOUND");
     }
 
     return participantTransport.transport;

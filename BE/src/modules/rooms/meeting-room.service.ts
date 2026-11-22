@@ -1,3 +1,5 @@
+import { AppError } from "../../common/errors/app-error";
+
 export type ParticipantRole = "host" | "guest";
 export type ParticipantAccess = "waiting" | "admitted";
 
@@ -11,7 +13,7 @@ export type RoomParticipant = {
 type ParticipantInput = Pick<RoomParticipant, "id" | "displayName">;
 
 type MeetingRoom = {
-  hostParticipantId: string;
+  hostParticipantId: string | null;
   participantsById: Map<string, RoomParticipant>;
 };
 
@@ -27,6 +29,13 @@ export class MeetingRoomService {
     const existingRoom = this.roomsByMeetingCode.get(meetingCode);
 
     if (existingRoom) {
+      if (!existingRoom.hostParticipantId) {
+        const host: RoomParticipant = { ...participant, role: "host", access: "admitted" };
+        existingRoom.hostParticipantId = host.id;
+        existingRoom.participantsById.set(host.id, host);
+        return { ...host };
+      }
+
       if (existingRoom.hostParticipantId !== participant.id) {
         throw new AppError(
           "A different host already controls this meeting room",
@@ -77,6 +86,18 @@ export class MeetingRoomService {
     return { ...guest };
   }
 
+  /** Restores a guest after the gateway has verified their saved host approval. */
+  public restoreApprovedGuest(meetingCode: string, participant: ParticipantInput): RoomParticipant {
+    let room = this.roomsByMeetingCode.get(meetingCode);
+    if (!room) {
+      room = { hostParticipantId: null, participantsById: new Map() };
+      this.roomsByMeetingCode.set(meetingCode, room);
+    }
+    const guest: RoomParticipant = { ...participant, role: "guest", access: "admitted" };
+    room.participantsById.set(guest.id, guest);
+    return { ...guest };
+  }
+
   /** Lets the current host promote one waiting guest into the active meeting. */
   public admitGuest(
     meetingCode: string,
@@ -121,6 +142,23 @@ export class MeetingRoomService {
     }));
   }
 
+  /** Returns only people who have passed the waiting room for the live meeting UI. */
+  public getAdmittedParticipants(meetingCode: string): RoomParticipant[] {
+    return this.getParticipants(meetingCode).filter((participant) => participant.access === "admitted");
+  }
+
+  /** Remove disconnected sockets so the roster and waiting room stay current. */
+  public removeParticipant(meetingCode: string, participantId: string): RoomParticipant | undefined {
+    const room = this.roomsByMeetingCode.get(meetingCode);
+    const participant = room?.participantsById.get(participantId);
+    if (!room || !participant) return;
+
+    room.participantsById.delete(participantId);
+    if (room.hostParticipantId === participantId) room.hostParticipantId = null;
+    if (!room.participantsById.size) this.roomsByMeetingCode.delete(meetingCode);
+    return { ...participant };
+  }
+
   private requireRoom(meetingCode: string): MeetingRoom {
     const room = this.roomsByMeetingCode.get(meetingCode);
     if (!room) {
@@ -146,5 +184,3 @@ export class MeetingRoomService {
     return { ...participant };
   }
 }
-import { AppError } from "../../common/errors/app-error";
-

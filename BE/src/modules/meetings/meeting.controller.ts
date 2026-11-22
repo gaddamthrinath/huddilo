@@ -4,10 +4,14 @@ import { successResponse } from "../../common/utils/api-response";
 import { AppError } from "../../common/errors/app-error";
 import { HostAccessBodySchema, MeetingParamsSchema } from "./meeting.schemas";
 import { getCookieValue, getHostCookieName } from "./host-session";
+import { getGuestCookieName, GUEST_SESSION_TTL_MS, GuestSessionService } from "./guest-session.service";
 import type { MeetingService } from "./meeting.service";
 
 export class MeetingController {
-  public constructor(private readonly meetingService: MeetingService) {}
+  public constructor(
+    private readonly meetingService: MeetingService,
+    private readonly guestSessions = new GuestSessionService(),
+  ) {}
 
   public create = async (_request: Request, response: Response): Promise<void> => {
     const meeting = await this.meetingService.createMeeting();
@@ -38,6 +42,31 @@ export class MeetingController {
         },
       }),
     );
+  };
+
+  public getGuestSession = (request: Request, response: Response): void => {
+    const code = this.parseMeetingCode(request);
+    const cookie = getCookieValue(request.headers, getGuestCookieName(code));
+    const approvedName = this.guestSessions.approvedName(code, cookie);
+    response.set("Cache-Control", "no-store").json(successResponse({ approvedName: approvedName ?? null }));
+  };
+
+  public createGuestSession = async (request: Request, response: Response): Promise<void> => {
+    const code = this.parseMeetingCode(request);
+    await this.meetingService.getMeeting(code);
+    const cookieName = getGuestCookieName(code);
+    const cookie = getCookieValue(request.headers, cookieName);
+    const id = this.guestSessions.ensure(code, cookie);
+    if (id !== cookie) {
+      response.cookie(cookieName, id, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: GUEST_SESSION_TTL_MS,
+        path: "/",
+      });
+    }
+    response.set("Cache-Control", "no-store").status(204).end();
   };
 
   public createHostSession = async (request: Request, response: Response): Promise<void> => {

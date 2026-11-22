@@ -7,13 +7,15 @@ import { MeetingController } from "../modules/meetings/meeting.controller";
 import { MeetingRepository } from "../modules/meetings/meeting.repository";
 import { MeetingRoutes } from "../modules/meetings/meeting.routes";
 import { MeetingService } from "../modules/meetings/meeting.service";
+import type { GuestSessionService } from "../modules/meetings/guest-session.service";
 import type { MediaWorkerPoolStatusProvider } from "../modules/media/media-worker-pool";
 
 type ApiRouterDependencies = {
   mediaWorkerPool?: MediaWorkerPoolStatusProvider;
+  guestSessions?: GuestSessionService;
 };
 
-export function createApiRouter({ mediaWorkerPool }: ApiRouterDependencies = {}) {
+export function createApiRouter({ mediaWorkerPool, guestSessions }: ApiRouterDependencies = {}) {
   const apiRouter = Router();
 
   const healthService = new HealthService(mediaWorkerPool);
@@ -22,7 +24,7 @@ export function createApiRouter({ mediaWorkerPool }: ApiRouterDependencies = {})
 
   const meetingRepository = new MeetingRepository();
   const meetingService = new MeetingService(meetingRepository);
-  const meetingController = new MeetingController(meetingService);
+  const meetingController = new MeetingController(meetingService, guestSessions);
   const meetingRoutes = new MeetingRoutes(meetingController);
 
   apiRouter.use("/health", healthRoutes.router);

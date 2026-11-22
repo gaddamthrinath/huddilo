@@ -58,3 +58,8 @@ export const HostAccessResponseSchema = z.object({
     meeting: PublicMeetingSchema,
   }),
 });
+
+export const GuestSessionResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({ approvedName: z.string().nullable() }),
+});

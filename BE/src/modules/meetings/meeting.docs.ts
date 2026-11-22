@@ -4,6 +4,7 @@ import type { ZodType } from "zod";
 import {
   CreateMeetingResponseSchema,
   GetMeetingResponseSchema,
+  GuestSessionResponseSchema,
   HostAccessBodySchema,
   HostAccessResponseSchema,
   MeetingCodeSchema,
@@ -83,6 +84,34 @@ export function registerMeetingDocs(
     responses: {
       200: { description: "Host access confirmed", content: { "application/json": { schema: HostAccessResponseSchema } } },
       403: { description: "Host session required", content: { "application/json": { schema: errorResponseSchema } } },
+    },
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/api/v1/meetings/{meetingCode}/guest-session",
+    tags: ["Meetings"],
+    summary: "Establish a guest session",
+    description: "Sets an HttpOnly cookie for an active meeting. The session receives admission only after host approval.",
+    request: { params: MeetingParamsSchema },
+    responses: {
+      204: { description: "Guest session is ready" },
+      404: { description: "Meeting not found" },
+      410: { description: "Meeting has ended" },
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/api/v1/meetings/{meetingCode}/guest-session",
+    tags: ["Meetings"],
+    summary: "Check saved guest admission",
+    request: { params: MeetingParamsSchema },
+    responses: {
+      200: {
+        description: "Saved display name, or null when the guest session has no approval",
+        content: { "application/json": { schema: GuestSessionResponseSchema } },
+      },
     },
   });
 

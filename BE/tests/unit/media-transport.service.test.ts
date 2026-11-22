@@ -22,6 +22,10 @@ it("creates one reusable send transport and a separate receive transport per par
     expect(send.iceCandidates).not.toHaveLength(0);
     expect(send.dtlsParameters.fingerprints).not.toHaveLength(0);
 
+    const restarted = await transports.getTransport("room-a", "participant-a", "send").restartIce();
+    expect(restarted.usernameFragment).not.toBe(send.iceParameters.usernameFragment);
+    expect((await transports.getOrCreateTransport("room-a", "participant-a", "send")).id).toBe(send.id);
+
     transports.closeParticipantTransports("room-a", "participant-a");
     const replacement = await transports.getOrCreateTransport("room-a", "participant-a", "send");
     expect(replacement.id).not.toBe(send.id);
