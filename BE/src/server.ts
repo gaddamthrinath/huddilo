@@ -4,15 +4,44 @@ import { createApp } from "./app";
 import { connectDatabase, disconnectDatabase } from "./config/database";
 import { env } from "./config/env";
 import { mediaConfig } from "./config/media";
+import { turnConfig } from "./config/turn";
+import { MediaAccessService } from "./modules/media/media-access.service";
+import { MediaRouterService } from "./modules/media/media-router.service";
+import { MediaProducerService } from "./modules/media/media-producer.service";
+import { MediaTransportService } from "./modules/media/media-transport.service";
 import { MediaWorkerPool } from "./modules/media/media-worker-pool";
+import { TurnCredentialService } from "./modules/media/turn-credential.service";
+import { MeetingRepository } from "./modules/meetings/meeting.repository";
+import { MeetingService } from "./modules/meetings/meeting.service";
+import { RealtimeGateway } from "./modules/realtime/realtime-gateway";
+import { MeetingRoomService } from "./modules/rooms/meeting-room.service";
 
 async function startServer(): Promise<void> {
   await connectDatabase();
 
   const mediaWorkerPool = new MediaWorkerPool(mediaConfig);
   await mediaWorkerPool.start();
+  const mediaRouters = new MediaRouterService(mediaWorkerPool);
+  const mediaTransports = new MediaTransportService(mediaRouters, mediaConfig.webRtcTransport);
+  const mediaProducers = new MediaProducerService(mediaRouters, mediaTransports);
 
   const httpServer = createServer(createApp({ mediaWorkerPool }));
+  const rooms = new MeetingRoomService();
+  const meetings = new MeetingService(new MeetingRepository());
+  const mediaAccess = new MediaAccessService(
+    rooms,
+    new TurnCredentialService(turnConfig.sharedSecret),
+    turnConfig.urls,
+  );
+  const realtimeGateway = new RealtimeGateway(
+    httpServer,
+    env.FRONTEND_ORIGIN,
+    rooms,
+    meetings,
+    mediaAccess,
+    mediaTransports,
+    mediaProducers,
+  );
 
   httpServer.listen(env.PORT, () => {
     console.info(`Huddilo API listening on http://localhost:${env.PORT}`);
@@ -27,9 +56,11 @@ async function startServer(): Promise<void> {
 
     isShuttingDown = true;
     console.info(`${signal} received; shutting down`);
-    httpServer.close(() => {
-      mediaWorkerPool.close();
-      void disconnectDatabase().finally(() => process.exit(0));
+    void realtimeGateway.close().finally(() => {
+      httpServer.close(() => {
+        mediaWorkerPool.close();
+        void disconnectDatabase().finally(() => process.exit(0));
+      });
     });
   };
 

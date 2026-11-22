@@ -5,6 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import { useLocalMedia } from "@/hooks/use-local-media";
 import { getMeeting, MeetingApiError } from "@/lib/api/meetings";
+import {
+  connectMeetingSocket,
+  disconnectMeetingSocket,
+  emitWithAck,
+  getMeetingSocket,
+} from "@/lib/realtime/meeting-socket";
 import type { PublicMeeting } from "@/types/meeting";
 
 import { MediaPreview } from "./media-preview";
@@ -17,10 +23,27 @@ type ValidationState =
   | { status: "ended" }
   | { status: "error" };
 
+type JoinResponse =
+  | { success: true; participant: { access: "waiting" | "admitted"; role: "guest" | "host" } }
+  | { success: false; error: { code: string; message: string } };
+
+type JoinState = "idle" | "joining" | "waiting" | "admitted" | "error";
+
+type WaitingGuest = {
+  id: string;
+  displayName: string;
+  role: "guest";
+  access: "waiting";
+};
+
 export function JoinScreen({ meetingCode }: { meetingCode: string }) {
   const [validation, setValidation] = useState<ValidationState>({ status: "checking" });
   const [displayName, setDisplayName] = useState("");
   const [joinNotice, setJoinNotice] = useState<string | null>(null);
+  const [joinState, setJoinState] = useState<JoinState>("idle");
+  const [role, setRole] = useState<"guest" | "host" | null>(null);
+  const [waitingGuests, setWaitingGuests] = useState<WaitingGuest[]>([]);
+  const [admittingGuestId, setAdmittingGuestId] = useState<string | null>(null);
   const media = useLocalMedia();
 
   const validateMeeting = useCallback(async (signal?: AbortSignal) => {
@@ -50,12 +73,101 @@ export function JoinScreen({ meetingCode }: { meetingCode: string }) {
     return () => controller.abort();
   }, [meetingCode]);
 
-  function handleJoin(event: React.FormEvent<HTMLFormElement>): void {
+  useEffect(() => {
+    const socket = getMeetingSocket();
+
+    function handleAdmission(): void {
+      setJoinState("admitted");
+      setJoinNotice("You have been admitted. Preparing your secure meeting connection…");
+    }
+
+    function handleGuestRequested(guest: WaitingGuest): void {
+      setWaitingGuests((currentGuests) =>
+        currentGuests.some((currentGuest) => currentGuest.id === guest.id)
+          ? currentGuests
+          : [...currentGuests, guest],
+      );
+    }
+
+    socket.on("room:admitted", handleAdmission);
+    socket.on("waiting-room:guest-requested", handleGuestRequested);
+    return () => {
+      socket.off("room:admitted", handleAdmission);
+      socket.off("waiting-room:guest-requested", handleGuestRequested);
+      disconnectMeetingSocket();
+    };
+  }, []);
+
+  async function handleJoin(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const name = displayName.trim();
     if (!name) return;
+
     sessionStorage.setItem("huddilo-display-name", name);
-    setJoinNotice("Your setup is ready. Host admission will be connected in the next step.");
+    setJoinState("joining");
+    setJoinNotice("Connecting to the meeting…");
+
+    try {
+      const socket = await connectMeetingSocket();
+      const response = await emitWithAck<JoinResponse>(socket, "room:join", {
+        meetingCode,
+        displayName: name,
+      });
+
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.participant.access === "waiting") {
+        setRole("guest");
+        setJoinState("waiting");
+        setJoinNotice("Your request was sent. Waiting for the host to let you in…");
+        return;
+      }
+
+      setJoinState("admitted");
+      setRole(response.participant.role);
+      setJoinNotice(
+        response.participant.role === "host"
+          ? "You joined as the host. Preparing your secure meeting connection…"
+          : "You have been admitted. Preparing your secure meeting connection…",
+      );
+    } catch (error: unknown) {
+      setJoinState("error");
+      setJoinNotice(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t connect you to the meeting. Please try again.",
+      );
+    }
+  }
+
+  async function handleAdmitGuest(guest: WaitingGuest): Promise<void> {
+    setAdmittingGuestId(guest.id);
+
+    try {
+      const response = await emitWithAck<JoinResponse>(
+        getMeetingSocket(),
+        "room:admit",
+        guest.id,
+      );
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+
+      setWaitingGuests((currentGuests) =>
+        currentGuests.filter((currentGuest) => currentGuest.id !== guest.id),
+      );
+    } catch (error: unknown) {
+      setJoinState("error");
+      setJoinNotice(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t admit this guest. Please try again.",
+      );
+    } finally {
+      setAdmittingGuestId(null);
+    }
   }
 
   if (validation.status === "checking") return <JoinLoadingScreen meetingCode={meetingCode} />;
@@ -80,13 +192,34 @@ export function JoinScreen({ meetingCode }: { meetingCode: string }) {
           <h1 className="mt-7 text-3xl font-bold tracking-[-0.04em] text-[#171b24]">Ready to join?</h1>
           <p className="mt-2 text-base leading-7 text-[#667085]">Add your name and check your devices before asking to enter.</p>
 
-          <form onSubmit={handleJoin} className="mt-7">
+          <form onSubmit={(event) => void handleJoin(event)} className="mt-7">
             <label htmlFor="display-name" className="mb-2 block text-sm font-semibold text-[#344054]">Your name</label>
             <input id="display-name" name="displayName" value={displayName} onChange={(event) => { setDisplayName(event.target.value); setJoinNotice(null); }} maxLength={50} autoComplete="name" placeholder="Enter your display name" className="h-12 w-full rounded-lg border border-[#cfd5df] bg-white px-3.5 text-base text-[#172033] outline-none transition-[border-color,box-shadow] placeholder:text-[#98a2b3] focus:border-[#2458e6] focus:ring-3 focus:ring-[#2458e6]/12" />
-            <button type="submit" disabled={!displayName.trim()} className="mt-4 h-12 w-full rounded-lg bg-[#2458e6] px-5 text-base font-semibold text-white shadow-[0_5px_14px_rgba(36,88,230,0.2)] hover:bg-[#1d49c6] disabled:cursor-not-allowed disabled:bg-[#b7c4e8] disabled:shadow-none">Ask to join</button>
+            <button type="submit" disabled={!displayName.trim() || joinState === "joining" || joinState === "waiting" || joinState === "admitted"} className="mt-4 h-12 w-full rounded-lg bg-[#2458e6] px-5 text-base font-semibold text-white shadow-[0_5px_14px_rgba(36,88,230,0.2)] hover:bg-[#1d49c6] disabled:cursor-not-allowed disabled:bg-[#b7c4e8] disabled:shadow-none">{joinState === "joining" ? "Connecting…" : joinState === "waiting" ? "Waiting for host" : joinState === "admitted" ? "Admitted" : "Ask to join"}</button>
           </form>
 
-          {joinNotice && <p role="status" className="mt-4 rounded-lg border border-[#dbe5ff] bg-[#f3f6ff] px-3.5 py-3 text-sm leading-6 text-[#334f9d]">{joinNotice}</p>}
+          {joinNotice && <p role="status" className={`mt-4 rounded-lg border px-3.5 py-3 text-sm leading-6 ${joinState === "error" ? "border-[#fecdca] bg-[#fef3f2] text-[#b42318]" : joinState === "admitted" ? "border-[#abefc6] bg-[#ecfdf3] text-[#067647]" : "border-[#dbe5ff] bg-[#f3f6ff] text-[#334f9d]"}`}>{joinNotice}</p>}
+
+          {role === "host" && joinState === "admitted" && (
+            <section className="mt-5 rounded-xl border border-[#dfe4ec] bg-[#f8fafc] p-4" aria-label="Waiting room">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-[#344054]">Waiting room</h2>
+                <span className="rounded-full bg-[#e8eefc] px-2.5 py-1 text-xs font-semibold text-[#2458e6]">{waitingGuests.length}</span>
+              </div>
+              {waitingGuests.length === 0 ? (
+                <p className="mt-3 text-sm leading-6 text-[#667085]">Guests who ask to join will appear here.</p>
+              ) : (
+                <ul className="mt-3 space-y-2.5">
+                  {waitingGuests.map((guest) => (
+                    <li key={guest.id} className="flex items-center justify-between gap-3 rounded-lg border border-[#e4e7ec] bg-white px-3 py-2.5">
+                      <span className="min-w-0 truncate text-sm font-medium text-[#344054]">{guest.displayName}</span>
+                      <button type="button" onClick={() => void handleAdmitGuest(guest)} disabled={admittingGuestId === guest.id} className="h-9 shrink-0 rounded-lg bg-[#2458e6] px-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d49c6] disabled:cursor-not-allowed disabled:bg-[#b7c4e8]">{admittingGuestId === guest.id ? "Admitting…" : "Admit"}</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
           <div className="mt-7 border-t border-[#e7e9ee] pt-5 lg:mt-auto">
             <div className="flex items-start gap-3">

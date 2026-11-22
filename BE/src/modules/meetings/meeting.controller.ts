@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { successResponse } from "../../common/utils/api-response";
 import { AppError } from "../../common/errors/app-error";
 import { HostAccessBodySchema, MeetingParamsSchema } from "./meeting.schemas";
+import { getCookieValue, getHostCookieName } from "./host-session";
 import type { MeetingService } from "./meeting.service";
 
 export class MeetingController {
@@ -49,7 +50,7 @@ export class MeetingController {
 
     const meeting = await this.meetingService.verifyHostAccess(meetingCode, parsedBody.data.token);
 
-    response.cookie(this.hostCookieName(meeting.code), parsedBody.data.token, {
+    response.cookie(getHostCookieName(meeting.code), parsedBody.data.token, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -70,7 +71,7 @@ export class MeetingController {
 
   public getHostAccess = async (request: Request, response: Response): Promise<void> => {
     const meetingCode = this.parseMeetingCode(request);
-    const token = this.readCookie(request, this.hostCookieName(meetingCode));
+    const token = getCookieValue(request.headers, getHostCookieName(meetingCode));
 
     if (!token) {
       throw new AppError("Open your private host link to continue", 403, "HOST_SESSION_REQUIRED");
@@ -99,13 +100,4 @@ export class MeetingController {
     return parsedParams.data.meetingCode;
   }
 
-  private readCookie(request: Request, name: string): string | undefined {
-    const cookies = request.headers.cookie?.split(";") ?? [];
-    const item = cookies.find((cookie) => cookie.trim().startsWith(`${name}=`));
-    return item ? decodeURIComponent(item.trim().slice(name.length + 1)) : undefined;
-  }
-
-  private hostCookieName(meetingCode: string): string {
-    return `huddilo_host_${meetingCode.replace(/-/g, "_")}`;
-  }
 }
