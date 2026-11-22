@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme static {
+  --radius-card: 6px;
+  --radius-control: 4px;
+}
+
 :root {
   --background: #f7f8fa;
   --foreground: #172033;

@@ -26,14 +26,19 @@ export function useLocalMedia() {
   const startMedia = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setPermissionState("unavailable");
-      return;
+      return null;
     }
 
     setPermissionState("requesting");
 
     try {
       const nextStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        // Keep the source manageable when the browser encodes multiple layers.
+        video: {
+          width: { ideal: 1280, max: 1280 },
+          height: { ideal: 720, max: 720 },
+          frameRate: { ideal: 24, max: 24 },
+        },
         audio: true,
       });
       streamRef.current = nextStream;
@@ -41,6 +46,7 @@ export function useLocalMedia() {
       setCameraEnabled(true);
       setMicrophoneEnabled(true);
       setPermissionState("ready");
+      return nextStream;
     } catch (error: unknown) {
       setPermissionState(
         error instanceof DOMException &&
@@ -48,6 +54,7 @@ export function useLocalMedia() {
           ? "denied"
           : "unavailable",
       );
+      return null;
     }
   }, []);
 

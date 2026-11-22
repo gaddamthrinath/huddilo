@@ -1,0 +1,281 @@
+.huddilo-call-room {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  background: #f5f7fb;
+  color: #172033;
+}
+
+.huddilo-call-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(8px, 1.35vw, 22px);
+  overflow: hidden;
+}
+
+.huddilo-call-gallery,
+.huddilo-call-focus-layout,
+.huddilo-call-filmstrip {
+  display: grid;
+  gap: clamp(6px, 1vw, 14px);
+  min-width: 0;
+  min-height: 0;
+}
+
+.huddilo-call-gallery {
+  height: 100%;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  /* Fill available height for small calls; scroll only the tiles in larger calls. */
+  grid-auto-rows: minmax(min(100%, 9rem), 1fr);
+  overflow: auto;
+}
+
+.huddilo-call-focus-layout {
+  height: 100%;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+
+.huddilo-call-focus-layout[data-has-thumbnails="true"] {
+  grid-template-columns: minmax(0, 1fr) clamp(9rem, 22vw, 20rem);
+}
+
+.huddilo-call-filmstrip {
+  align-content: start;
+  grid-auto-rows: clamp(6rem, 21dvh, 12rem);
+  overflow: auto;
+}
+
+.huddilo-call-tile {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #dde5f1;
+  border-radius: var(--radius-card);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.huddilo-call-tile[data-has-video="true"] {
+  background: #172033;
+}
+
+.huddilo-call-tile:hover,
+.huddilo-call-tile[data-focused="true"] {
+  border-color: #2458e6;
+}
+
+.huddilo-call-tile:focus-visible {
+  outline: 2px solid #2458e6;
+  outline-offset: -4px;
+}
+
+.huddilo-call-video,
+.huddilo-call-camera-off {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.huddilo-call-video {
+  object-fit: cover;
+}
+
+.huddilo-call-tile[data-focused="true"] .huddilo-call-video,
+.huddilo-call-gallery:has(> :only-child) .huddilo-call-video {
+  object-fit: contain;
+}
+
+.huddilo-call-camera-off {
+  display: grid;
+  place-items: center;
+  padding-bottom: 14px;
+  background: radial-gradient(ellipse at 50% 32%, #eaf0ff, #f8faff 80%);
+}
+
+.huddilo-call-avatar {
+  display: grid;
+  place-items: center;
+  width: clamp(2.4rem, 8dvh, 5.4rem);
+  aspect-ratio: 1;
+  border: 1px solid #cbd9fa;
+  border-radius: 50%;
+  background: #dce7ff;
+  color: #254788;
+  font-size: clamp(1rem, 3.4dvh, 2rem);
+  font-weight: 700;
+}
+
+.huddilo-call-filmstrip .huddilo-call-avatar {
+  width: clamp(2rem, 6dvh, 3.25rem);
+  font-size: 1rem;
+}
+
+.huddilo-call-tile-label {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 18px 10px 8px;
+  background: linear-gradient(transparent, #f8faff);
+  color: #172033;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.huddilo-call-tile[data-has-video="true"] .huddilo-call-tile-label {
+  background: linear-gradient(transparent, #0c1527e8);
+  color: #fff;
+}
+
+.huddilo-call-host-badge {
+  border-radius: 5px;
+  padding: 2px 5px;
+  background: #2458e6;
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.huddilo-call-muted {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fce8eb;
+  color: #a1283b;
+}
+
+.huddilo-call-muted svg { width: 14px; height: 14px; }
+
+.huddilo-call-slash {
+  position: absolute;
+  width: 54%;
+  height: 2px;
+  background: currentColor;
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+
+.huddilo-call-toolbar {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid #e4e7ec;
+  background: #fff;
+}
+
+.huddilo-call-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.huddilo-call-status {
+  max-width: min(100%, 44rem);
+  color: #526078;
+  font-size: 0.8125rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.huddilo-call-status[data-error="true"] { color: #b42318; }
+
+.huddilo-call-control,
+.huddilo-call-enable-button,
+.huddilo-call-end-button,
+.huddilo-call-secondary-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  border: 1px solid #dce4f2;
+  border-radius: var(--radius-control);
+  padding: 0 12px;
+  background: #fff;
+  color: #254788;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.huddilo-call-control {
+  width: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: #edf2ff;
+}
+.huddilo-call-control[data-active="false"] { color: #a1283b; background: #fce8eb; border-color: #ebc7cd; }
+.huddilo-call-enable-button { background: #2458e6; border-color: #2458e6; color: #fff; }
+.huddilo-call-end-button {
+  width: 60px;
+  padding: 0;
+  border-radius: 22px;
+  background: #bd283d;
+  border-color: #bd283d;
+  color: #fff;
+}
+.huddilo-call-actions button:focus-visible {
+  outline: 2px solid #2458e6;
+  outline-offset: 2px;
+}
+.huddilo-call-secondary-button { min-height: 36px; padding: 0 8px; }
+.huddilo-call-control:disabled,
+.huddilo-call-secondary-button:disabled,
+.huddilo-call-end-button:disabled,
+.huddilo-call-enable-button:disabled { opacity: 0.6; cursor: wait; }
+.huddilo-call-control:not(:disabled):hover { background: #dfe8ff; }
+.huddilo-call-control[data-active="false"]:not(:disabled):hover { background: #f8dce1; }
+.huddilo-call-enable-button:not(:disabled):hover { background: #1d49c6; }
+.huddilo-call-end-button:not(:disabled):hover { background: #a52235; }
+.huddilo-call-secondary-button:not(:disabled):hover { background: #f2f6ff; }
+
+.huddilo-call-waiting-room {
+  position: absolute;
+  z-index: 2;
+  inset: 8px 8px auto auto;
+  width: min(20rem, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #dde5f1;
+  border-radius: var(--radius-card);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(23, 42, 84, 0.12);
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .huddilo-call-gallery { grid-template-columns: repeat(var(--mobile-columns), minmax(0, 1fr)); }
+  .huddilo-call-focus-layout[data-has-thumbnails="true"] {
+    grid-template: minmax(0, 1fr) clamp(5rem, 16dvh, 8rem) / minmax(0, 1fr);
+  }
+  .huddilo-call-filmstrip {
+    grid-auto-flow: column;
+    grid-auto-columns: clamp(7.5rem, 40vw, 11rem);
+    grid-auto-rows: minmax(0, 1fr);
+    align-content: stretch;
+    overflow-x: auto;
+  }
+  .huddilo-call-secondary-button { font-size: 0.75rem; }
+}
+
+@media (max-height: 420px) {
+  .huddilo-call-gallery { grid-auto-rows: minmax(min(100%, 6.5rem), 1fr); }
+  .huddilo-call-status { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+}

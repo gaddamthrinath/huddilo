@@ -30,7 +30,7 @@ export function MediaPreview({
   }, [stream]);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#dfe4ec] bg-white shadow-[0_20px_52px_rgba(26,38,68,0.09)]">
+    <section className="overflow-hidden rounded-card border border-[#dfe4ec] bg-white shadow-[0_20px_52px_rgba(26,38,68,0.09)]">
       <div className="flex items-center justify-between border-b border-[#e8ebf0] px-5 py-4 sm:px-6">
         <div>
           <p className="text-sm font-semibold text-[#263247]">Your preview</p>
@@ -59,7 +59,7 @@ export function MediaPreview({
                     : "Your camera is off"}
             </p>
             {permissionState === "idle" && (
-              <button type="button" onClick={onStartMedia} className="mt-4 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#172033] transition-colors hover:bg-[#eef2f8] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-white">
+              <button type="button" onClick={onStartMedia} className="mt-4 rounded-control bg-white px-4 py-2.5 text-sm font-semibold text-[#172033] transition-colors hover:bg-[#eef2f8] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-white">
                 Enable camera and microphone
               </button>
             )}
@@ -88,7 +88,7 @@ export function MediaPreview({
 }
 
 function ControlButton({ label, active, onClick, children }: { label: string; active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" aria-label={label} onClick={onClick} className={`flex size-11 items-center justify-center rounded-full border text-white shadow-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-white ${active ? "border-white/15 bg-[#303a4e] hover:bg-[#3d485e]" : "border-[#d84c4c] bg-[#d84c4c] hover:bg-[#c33e3e]"}`}>{children}</button>;
+  return <button type="button" aria-label={label} onClick={onClick} className={`flex size-11 items-center justify-center rounded-control border text-white shadow-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-white ${active ? "border-white/15 bg-[#303a4e] hover:bg-[#3d485e]" : "border-[#d84c4c] bg-[#d84c4c] hover:bg-[#c33e3e]"}`}>{children}</button>;
 }
 
 function MicrophoneIcon({ muted }: { muted: boolean }) {

@@ -13,7 +13,7 @@ function MicIcon({ muted = false }: { muted?: boolean }) {
 
 function CallControl({ children, danger = false }: { children: React.ReactNode; danger?: boolean }) {
   return (
-    <span className={`flex size-8 items-center justify-center rounded-full ${danger ? "bg-[#e24d4d] text-white" : "bg-[#3a414d] text-white/90"}`}>
+    <span className={`flex size-8 items-center justify-center rounded-control ${danger ? "bg-[#e24d4d] text-white" : "bg-[#3a414d] text-white/90"}`}>
       {children}
     </span>
   );
@@ -21,10 +21,10 @@ function CallControl({ children, danger = false }: { children: React.ReactNode; 
 
 export function MeetingPreview() {
   return (
-    <section className="relative mx-auto min-h-[330px] w-full max-w-[650px] sm:min-h-[390px] md:mx-0 md:min-h-[390px] lg:min-h-[480px] xl:min-h-[500px]" aria-label="Huddilo meeting preview">
+    <section className="relative mx-auto min-h-[330px] w-full max-w-[650px] sm:min-h-[390px] md:mx-0 lg:min-h-[480px] xl:min-h-[500px] [@media(max-height:680px)]:lg:min-h-[430px] [@media(max-height:680px)]:lg:max-w-[540px] [@media(max-height:680px)]:lg:justify-self-center" aria-label="Huddilo meeting preview">
       <div className="absolute inset-[7%_3%_2%_3%] rounded-[48%] bg-[#edf3ff] blur-3xl" aria-hidden="true" />
 
-      <div className="absolute left-0 top-[20%] z-10 w-[84%] overflow-hidden rounded-xl border border-[#d8dde7] bg-[#171b24] shadow-[0_22px_50px_rgba(24,35,58,0.18)] sm:left-[2%] sm:w-[82%] sm:rounded-2xl md:left-0 md:w-[84%] lg:left-[2%] lg:w-[82%] lg:shadow-[0_28px_65px_rgba(24,35,58,0.2)]">
+      <div className="absolute left-0 top-[20%] z-10 w-[84%] overflow-hidden rounded-card border border-[#d8dde7] bg-[#171b24] shadow-[0_22px_50px_rgba(24,35,58,0.18)] sm:left-[2%] sm:w-[82%] md:left-0 md:w-[84%] lg:left-[2%] lg:w-[82%] lg:shadow-[0_28px_65px_rgba(24,35,58,0.2)]">
         <div className="relative aspect-[1.52] overflow-hidden bg-[#354159]">
           <div className="absolute inset-0 meeting-grid" aria-hidden="true" />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -46,7 +46,7 @@ export function MeetingPreview() {
         </div>
       </div>
 
-      <div className="absolute right-[1%] top-[3%] z-20 w-[34%] overflow-hidden rounded-xl border-2 border-[#2458e6] bg-[#292f3b] shadow-[0_18px_38px_rgba(36,88,230,0.2)] sm:right-[3%] md:right-0 md:w-[36%] lg:right-[3%] lg:w-[34%]">
+      <div className="absolute right-[1%] top-[3%] z-20 w-[34%] overflow-hidden rounded-card border-2 border-[#2458e6] bg-[#292f3b] shadow-[0_18px_38px_rgba(36,88,230,0.2)] sm:right-[3%] md:right-0 md:w-[36%] lg:right-[3%] lg:w-[34%]">
         <div className="relative aspect-[0.95] flex items-center justify-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-[#d9e3ff] text-sm font-bold text-[#2448a7] sm:size-14 lg:size-16">MK</div>
           <span className="absolute bottom-2 left-2 text-[0.7rem] font-medium text-white/90 sm:text-xs">Maya</span>
@@ -54,7 +54,7 @@ export function MeetingPreview() {
         </div>
       </div>
 
-      <div className="absolute bottom-[3%] right-[2%] z-20 w-[31%] overflow-hidden rounded-xl border border-[#d8dde7] bg-[#292f3b] shadow-[0_18px_38px_rgba(24,35,58,0.15)] sm:right-[5%] md:right-0 md:w-[33%] lg:right-[5%] lg:w-[31%]">
+      <div className="absolute bottom-[3%] right-[2%] z-20 w-[31%] overflow-hidden rounded-card border border-[#d8dde7] bg-[#292f3b] shadow-[0_18px_38px_rgba(24,35,58,0.15)] sm:right-[5%] md:right-0 md:w-[33%] lg:right-[5%] lg:w-[31%]">
         <div className="relative aspect-[0.95] flex items-center justify-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-[#dff2ea] text-sm font-bold text-[#267052] sm:size-14 lg:size-16">JD</div>
           <span className="absolute bottom-2 left-2 text-[0.7rem] font-medium text-white/90 sm:text-xs">Jon</span>
@@ -62,8 +62,8 @@ export function MeetingPreview() {
         </div>
       </div>
 
-      <div className="absolute bottom-[5%] left-[3%] z-30 hidden items-center gap-2.5 rounded-xl border border-[#dfe4ec] bg-white px-3.5 py-3 shadow-[0_14px_30px_rgba(32,45,70,0.13)] lg:flex">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-[#eaf0ff] text-[#2458e6]">
+      <div className="absolute bottom-[5%] left-[3%] z-30 hidden items-center gap-2.5 rounded-card border border-[#dfe4ec] bg-white px-3.5 py-3 shadow-[0_14px_30px_rgba(32,45,70,0.13)] lg:flex">
+        <span className="flex size-8 items-center justify-center rounded-control bg-[#eaf0ff] text-[#2458e6]">
           <svg viewBox="0 0 20 20" fill="none" className="size-4" aria-hidden="true"><path d="M10 2.5 16 5v4.2c0 3.7-2.5 6.8-6 8.3-3.5-1.5-6-4.6-6-8.3V5l6-2.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="m7.5 10 1.6 1.6 3.5-3.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </span>
         <span><span className="block text-xs font-semibold text-[#263247]">Meeting protected</span><span className="mt-0.5 block text-xs text-[#7b8494]">Passcode required</span></span>

@@ -111,6 +111,24 @@ export async function getMeeting(
   return payload.data.meeting;
 }
 
+export async function getApprovedGuestName(meetingCode: string, signal?: AbortSignal): Promise<string | null> {
+  const response = await fetch(`${API_BASE_URL}/meetings/${encodeURIComponent(meetingCode)}/guest-session`, {
+    credentials: "include",
+    signal,
+  });
+  if (!response.ok) return null;
+  const result = (await response.json()) as { data?: { approvedName?: string | null } };
+  return result.data?.approvedName ?? null;
+}
+
+export async function ensureGuestSession(meetingCode: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/meetings/${encodeURIComponent(meetingCode)}/guest-session`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Couldn’t start your meeting session. Please try again.");
+}
+
 export async function establishHostSession(
   meetingCode: string,
   token: string,
@@ -135,9 +153,11 @@ export async function establishHostSession(
   return payload.data.meeting;
 }
 
-export async function getHostAccess(meetingCode: string): Promise<PublicMeeting> {
+export async function getHostAccess(meetingCode: string, signal?: AbortSignal): Promise<PublicMeeting> {
   const response = await fetch(`${API_BASE_URL}/meetings/${encodeURIComponent(meetingCode)}/host-access`, {
     credentials: "include",
+    cache: "no-store",
+    signal,
   });
   const payload = (await response.json()) as HostAccessResponse | ErrorResponse;
 

@@ -5,7 +5,7 @@ export function AppHeader() {
   return (
     <header className="border-b border-[#e4e7ec] bg-white/95 shadow-[0_2px_10px_rgba(16,24,40,0.04)]">
       <div className="mx-auto flex h-[68px] w-full max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-10 xl:px-12">
-        <Link href="/" className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2458e6]" aria-label="Huddilo home">
+        <Link href="/" className="flex items-center gap-3 rounded-control focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2458e6]" aria-label="Huddilo home">
           <BrandMark className="size-8" />
           <span className="text-lg font-bold tracking-[-0.03em] text-[#111827]">Huddi<span className="text-[#2458e6]">lo</span></span>
         </Link>
